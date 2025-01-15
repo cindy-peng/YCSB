@@ -414,7 +414,8 @@ public class GoogleDatastoreClient extends DB {
 
     } else {
       // If this is not for delete, build the entity.
-      com.google.datastore.v1.Entity.Builder entityBuilder = com.google.datastore.v1.Entity.newBuilder(buildPrimaryKey1(table, key));
+      com.google.datastore.v1.Entity.Builder entityBuilder =
+          com.google.datastore.v1.Entity.newBuilder(buildPrimaryKey1(table, key));
       //  entityBuilder.setKey(buildPrimaryKey1(table, key));
 
       // Entity entity1 = Entity.newBuilder(datastoreKey);
