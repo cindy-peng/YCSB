@@ -129,12 +129,6 @@ public class GoogleDatastoreClient extends DB {
     if (null != skipIndexString && "false".equalsIgnoreCase(skipIndexString)) {
       skipIndex = false;
     }
-    // We need the following 3 essential properties to initialize datastore:
-    //
-    // - ProjectId,
-    // - DatasetId,
-    // - Path to private key file,
-    // - Service account email address.
     String projectId = getProperties().getProperty(
         "googledatastore.projectId", null);
     if (projectId == null) {
@@ -175,10 +169,7 @@ public class GoogleDatastoreClient extends DB {
             readConsistencyConfig + ". Expecting STRONG or EVENTUAL.");
       }
     }
-    //
-    // Entity Grouping Mode (googledatastore.entitygroupingmode), see
-    // documentation in conf/googledatastore.properties.
-    //
+
     String entityGroupingConfig = getProperties().getProperty(
         "googledatastore.entityGroupingMode", null);
     if (entityGroupingConfig != null) {
@@ -191,10 +182,7 @@ public class GoogleDatastoreClient extends DB {
             "MULTI_ENTITY_PER_GROUP.");
       }
     }
-
     try {
-      // Setup the connection to Google Cloud Datastore with the credentials
-      // obtained from the configure.
       Credential credential = GoogleCredential.getApplicationDefault();
 
       if (serviceAccountEmail != null && privateKeyFile != null) {
@@ -211,23 +199,12 @@ public class GoogleDatastoreClient extends DB {
 
       logger.info("credential: " + ((GoogleCredential) credential).toString());
 
-      // googledatastore.tracingenabled must be set to enable publishing traces to Cloud Trace
-      // Tracing depends on the following external APIs/Services:
-      // 1. Java OpenTelemetry SDK
-      // 2. Cloud Trace Exporter
-      // 3. TraceServiceClient from Cloud Trace API v1.
-      // Permissions to enabled tracing (https://cloud.google.com/trace/docs/iam#trace-roles):
-      // 1. gcloud auth application-default login must be run with the test user.
-      // 2. To write traces, test user must have one of roles/cloudtrace.[admin|agent|user] roles.
-      // 3. To read traces, test user must have one of roles/cloudtrace.[admin|user] roles.
       tracingEnabled = Boolean.parseBoolean(getProperties()
           .getProperty("googledatastore.tracingenabled", "false"));
       otel = getOtelSdk(projectId);
       logger.info("otel sdk class: " + otel.toString());
       tracer = otel.getTracer("YCSB_Datastore_Test");
       logger.info("tracingEnabled=" + tracingEnabled);
-
-
       DatastoreOptions.Builder datastoreOptionsBuilder = DatastoreOptions
           .newBuilder()
           .setProjectId(projectId)
@@ -237,7 +214,6 @@ public class GoogleDatastoreClient extends DB {
                   .setTracingEnabled(tracingEnabled)
                   .setOpenTelemetry(otel)
                   .build());
-
       if (usegRPC) {
         if (useChannelProvider) {
           InstantiatingGrpcChannelProvider channelProvider = DatastoreSettings
@@ -251,8 +227,20 @@ public class GoogleDatastoreClient extends DB {
       }
 
       DatastoreOptions datastoreOptions = datastoreOptionsBuilder.build();
-      datastore = datastoreOptions.getService();
+      if (datastoreOptions.getTransportChannelProvider() != null) {
+        // Get Channel Pool Settings:
+        ChannelPoolSettings channelPoolSettings =
+            ((InstantiatingGrpcChannelProvider) datastoreOptions.getTransportChannelProvider())
+                .getChannelPoolSettings();
 
+        logger.info("Connection Pooling Init Channel Count : " +
+            channelPoolSettings.getInitialChannelCount());
+        logger.info("Min Channel Count : " +
+            channelPoolSettings.getMinChannelCount());
+        logger.info("Max Channel Count : " +
+            channelPoolSettings.getMaxChannelCount());
+      }
+      datastore = datastoreOptions.getService();
     } catch (GeneralSecurityException exception) {
       throw new DBException("Security error connecting to the datastore: " +
           exception.getMessage(), exception);
@@ -261,7 +249,6 @@ public class GoogleDatastoreClient extends DB {
       throw new DBException("I/O error connecting to the datastore: " +
           exception.getMessage(), exception);
     }
-
     logger.info("Datastore client instance created: " +
         datastore.toString());
   }
