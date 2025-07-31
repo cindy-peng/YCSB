@@ -142,10 +142,10 @@ public class GoogleDatastoreClient extends DB {
 
     boolean usegRPC = Boolean.parseBoolean(getProperties().getProperty(
         "googledatastore.usegRPC", "true"));
-    logger.info("usegRPC:" + usegRPC);
+    logger.info("Using gRPC transport:" + usegRPC);
     boolean useChannelProvider = Boolean.parseBoolean(getProperties().getProperty(
         "googledatastore.useChannelProvider", "true"));
-    logger.info("useChannelProvider:" + useChannelProvider);
+    logger.info("Using gRPC ChannelProvider:" + useChannelProvider);
 
     String privateKeyFile = getProperties().getProperty(
         "googledatastore.privateKeyFile", null);
